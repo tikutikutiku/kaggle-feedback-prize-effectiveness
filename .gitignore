@@ -1,5 +1,11 @@
 # kaggle data
-input/*
+input/feedback-prize-2021/train/*.txt
+input/feedback-prize-2021/test/*.txt
+
+input/feedback-prize-effectiveness/train/*.txt
+input/feedback-prize-effectiveness/test/*.txt
+
+input/tascj/result/
 
 # created files
 *.csv
