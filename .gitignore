@@ -11,6 +11,7 @@ input/tascj/result/
 *.csv
 *.joblib
 *.pth
+999_Stacking/*/catboost_info/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
