@@ -1,6 +1,10 @@
+# kaggle data
+input/*
+
 # created files
 *.csv
 *.joblib
+*.pth
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
