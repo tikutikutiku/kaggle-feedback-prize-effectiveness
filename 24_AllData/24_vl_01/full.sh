@@ -8,7 +8,7 @@
 #  - This script will be run from your output directory
 #  - Imported Data is accessible via the relative path ../input/
 
-VERSION='18_BaselineSW/18_vl_01'
+VERSION='24_AllData/24_vl_01'
 MODEL='../input/deberta-large'
 LR=8e-6 #2e-5
 HEAD_LR=8e-6 #2e-5
