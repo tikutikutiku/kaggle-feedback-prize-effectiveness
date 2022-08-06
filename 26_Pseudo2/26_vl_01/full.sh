@@ -8,8 +8,8 @@
 #  - This script will be run from your output directory
 #  - Imported Data is accessible via the relative path ../input/
 
-VERSION='26_Pseudo2/26_vl_01'
-MODEL='../input/deberta-xlarge'
+VERSION='kaggle-feedback-prize-effectiveness/26_Pseudo2/26_vl_01'
+MODEL='../../input/deberta-xlarge'
 LR=6e-6 #8e-6 #2e-5
 HEAD_LR=6e-6 #8e-6 #2e-5
 TRN_BS=1
@@ -47,7 +47,7 @@ AWP_LR=1e-4 #1e-2 #1.0
 AWP_EPS=1e-3 #0.01
 AWP_START_EPOCH=1
 
-PRETRAINED_DETECTOR_PATH='../input/tascj/result/deberta_xlarge_fold0.pth'
+PRETRAINED_DETECTOR_PATH='../../input/tascj/result/deberta_xlarge_fold0.pth'
 #PRETRAINED_DETECTOR_PATH = f'../../05_Detection/exp/result/05_v1_04/model_seed100_fold0_swa.pth'
 
 MASK_PROB=0.8
@@ -68,7 +68,7 @@ SEED=100
 
 # train with pseudo label
 FOLD=0
-INPUT_PATH=../${VERSION}/result/pseudo_label_fold${FOLD}.csv
+INPUT_PATH=../../${VERSION}/result/pseudo_label_fold${FOLD}.csv
 FOLD_PATH=../00_EDA/00_v1_13/result/ # for pseudo-label
 MODE='pseudo'
 LOSS='bce' #'xentropy'
@@ -92,7 +92,7 @@ LOSS='bce' #'xentropy'
 
 # finetune
 FOLD=0
-INPUT_PATH='../input/feedback-prize-effectiveness/'
+INPUT_PATH='../../input/feedback-prize-effectiveness/'
 FOLD_PATH='../00_EDA/00_v2_07/result/' #'../../00_EDA/00_v1_01/result/'
 MODE='train'
 LOSS='xentropy'
