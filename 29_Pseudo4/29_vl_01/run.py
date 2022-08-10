@@ -39,7 +39,8 @@ def run(args, trn_df, val_df, pseudo_df=None):
             mask_prob=args.mask_prob,
             mask_ratio=args.mask_ratio,
             mode=args.mode,
-            aug=args.aug
+            aug=args.aug,
+            use_loss_weight=(args.loss_weight=='true'),
         )
         trn_dataloader = DataLoader(
             trn_dataset,
@@ -182,6 +183,7 @@ def run(args, trn_df, val_df, pseudo_df=None):
                 batch = len(data['discourse_ids'][0])
                 with torch.cuda.amp.autocast(enabled=(args.fp16=='true')):
                     pred, label, loss = model.training_step(data)
+                    loss = loss * data['loss_weight'].cuda()
                     if args.accumulate_grad_batches > 1:
                         loss = loss / args.accumulate_grad_batches
                     scaler.scale(loss).backward()
@@ -238,36 +240,36 @@ def run(args, trn_df, val_df, pseudo_df=None):
                                      message='epoch {:.0f}: trn_loss = {:.4f}, val_loss={:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
                                          epoch, trn_loss, val_loss, trn_score, val_score), 
                                      incoming_webhook_url=args.slack_url)
-                    if args.early_stopping=='true':
-                        if val_loss < val_loss_best: #val_score > val_score_best:
-                            val_score_best = val_score #update
-                            val_loss_best  = val_loss #update
-                            epoch_best     = epoch #update
-                            counter_ES     = 0 #reset
-                            if args.mode=='pseudo':
-                                torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
-                            else:
-                                torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-                            print('model (best loss) saved')
-                        else:
-                            counter_ES += 1
-                        if counter_ES > args.patience:
-                            print('early stopping, epoch_best {:.0f}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(
-                                epoch_best, val_loss_best, val_score_best))
-                            break
-                    else:
-                        if args.mode=='pseudo':
-                            torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
-                        else:
-                            torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
+#                     if args.early_stopping=='true':
+#                         if val_loss < val_loss_best: #val_score > val_score_best:
+#                             val_score_best = val_score #update
+#                             val_loss_best  = val_loss #update
+#                             epoch_best     = epoch #update
+#                             counter_ES     = 0 #reset
+#                             if args.mode=='pseudo':
+#                                 torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
+#                             else:
+#                                 torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
+#                             print('model (best loss) saved')
+#                         else:
+#                             counter_ES += 1
+#                         if counter_ES > args.patience:
+#                             print('early stopping, epoch_best {:.0f}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(
+#                                 epoch_best, val_loss_best, val_score_best))
+#                             break
+#                     else:
+#                         if args.mode=='pseudo':
+#                             torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
+#                         else:
+#                             torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
 
-                    if val_score > val_score_best2:
-                        val_score_best2 = val_score #update
-                        if args.mode=='pseudo':
-                            torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_pseudo.pth')) #save
-                        else:
-                            torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
-                        print('model (best score) saved')
+#                     if val_score > val_score_best2:
+#                         val_score_best2 = val_score #update
+#                         if args.mode=='pseudo':
+#                             torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_pseudo.pth')) #save
+#                         else:
+#                             torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
+#                         print('model (best score) saved')
                 
             #trn_loss = trn_loss / len(trn_dataset)
             trn_loss = trn_loss / counter
@@ -314,40 +316,40 @@ def run(args, trn_df, val_df, pseudo_df=None):
             if epoch%10 == 0:
                 print(' elapsed_time = {:.1f} min'.format((time.time() - start_time)/60))
                 
-            if args.early_stopping=='true':
-                if val_loss < val_loss_best: #val_score > val_score_best:
-                    val_score_best = val_score #update
-                    val_loss_best  = val_loss #update
-                    epoch_best     = epoch #update
-                    counter_ES     = 0 #reset
-                    if args.mode=='pseudo':
-                        torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
-                    else:
-                        torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-                    print('model (best loss) saved')
-                else:
-                    counter_ES += 1
-                if counter_ES > args.patience:
-                    print('early stopping, epoch_best {:.0f}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(
-                        epoch_best, val_loss_best, val_score_best))
-                    break
-            else:
-                if args.mode=='pseudo':
-                    torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
-                else:
-                    torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
+#             if args.early_stopping=='true':
+#                 if val_loss < val_loss_best: #val_score > val_score_best:
+#                     val_score_best = val_score #update
+#                     val_loss_best  = val_loss #update
+#                     epoch_best     = epoch #update
+#                     counter_ES     = 0 #reset
+#                     if args.mode=='pseudo':
+#                         torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
+#                     else:
+#                         torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
+#                     print('model (best loss) saved')
+#                 else:
+#                     counter_ES += 1
+#                 if counter_ES > args.patience:
+#                     print('early stopping, epoch_best {:.0f}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(
+#                         epoch_best, val_loss_best, val_score_best))
+#                     break
+#             else:
+#                 if args.mode=='pseudo':
+#                     torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
+#                 else:
+#                     torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
                
-            if val_score > val_score_best2:
-                val_score_best2 = val_score #update
-                if args.mode=='pseudo':
-                    torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_pseudo.pth')) #save
-                else:
-                    torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
-                print('model (best score) saved')
+#             if val_score > val_score_best2:
+#                 val_score_best2 = val_score #update
+#                 if args.mode=='pseudo':
+#                     torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_pseudo.pth')) #save
+#                 else:
+#                     torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
+#                 print('model (best score) saved')
                 
-        #best model
-        if args.early_stopping=='true' and counter_ES<=args.patience:
-            print('epoch_best {:d}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(epoch_best, val_loss_best, val_score_best))
+#         #best model
+#         if args.early_stopping=='true' and counter_ES<=args.patience:
+#             print('epoch_best {:d}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(epoch_best, val_loss_best, val_score_best))
         
         del model
         torch.cuda.empty_cache()

@@ -37,7 +37,7 @@ import sys
 # from cocolm.configuration_cocolm import COCOLMConfig
 from sift import hook_sift_layer, AdversarialLearner
 from sklearn.metrics import log_loss
-import bitsandbytes as bnb
+#import bitsandbytes as bnb
 
 class LSTMBlock(nn.Module):
     def __init__(self, in_channels, out_channels, num_layers=1, p_drop=0):
@@ -283,7 +283,7 @@ class Model(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
         
-    def forward_logits(self, input_ids, attention_mask, span_list, aug=False):
+    def forward_logits(self, input_ids, attention_mask, span_list, aug=False, save_prob_seq=False):
         assert self.multi_layers==1
         
         # sliding window approach to deal with longer tokens than max_length
@@ -314,16 +314,6 @@ class Model(nn.Module):
                 x = torch.cat([x,x_next], dim=1)
                 
         
-#         if self.last_hidden_only:
-#             hidden_states = self.transformer(input_ids=input_ids, 
-#                                              attention_mask=attention_mask).last_hidden_state #(bs,num_tokens,hidden_size)
-#             hidden_states = self.rnn(hidden_states) 
-#         else:
-#             hidden_states = self.transformer(input_ids=input_ids, 
-#                                              attention_mask=attention_mask).hidden_states[-self.multi_layers:] # list of (bs,num_tokens,hidden_size)
-#             hidden_states = torch.cat(hidden_states, dim=2) # (bs=1,num_tokens,hidden_size*multi_layers)
-#             hidden_states = self.rnn(hidden_states) # (bs=1,num_tokens,hidden_size*multi_layers)
-            
         hidden_states = self.rnn(x) 
         hidden_states = hidden_states.squeeze(0) # (num_tokens,hidden_size*multi_layers)
             
@@ -335,6 +325,14 @@ class Model(nn.Module):
             tmp_logits = hidden_states[i_token:i_token_next,:].mean(dim=0) # (hidden_size*multi_layers)
             logits_list.append(tmp_logits)
         logits = torch.stack(logits_list) # (bs=num_discourse,hidden_size*multi_layers)
+        
+        
+        if save_prob_seq:
+            prob_seq = []
+            for i_token, i_token_next in zip(span_list, span_list_next):
+                tmp_logits = hidden_states[i_token:i_token_next,:] # (num_tokens,hidden_size*multi_layers)
+                tmp_prob_seq = self.head(tmp_logits).softmax(-1).detach().cpu().numpy() #(num_tokens,num_labels)
+                prob_seq.append(tmp_prob_seq)
         
         if aug:
             lam = np.random.beta(self.mixup_alpha, self.mixup_alpha)
@@ -352,24 +350,8 @@ class Model(nn.Module):
         else:
             logits1 = self.head(logits) # (bs,num_labels)
             
-        if self.mt=='true' and self.training:
-            if self.msd=='true':
-                logits2_1 = self.head2(self.dropout_1(logits))
-                logits2_2 = self.head2(self.dropout_2(logits))
-                logits2_3 = self.head2(self.dropout_3(logits))
-                logits2_4 = self.head2(self.dropout_4(logits))
-                logits2_5 = self.head2(self.dropout_5(logits))
-                logits2 = (logits2_1 + logits2_2 + logits2_3 + logits2_4 + logits2_5) / 5.0
-            else:
-                logits2 = self.head2(logits) # (bs,num_labels)
-        
-        if self.l2norm=='true':
-            logits1 = self.s * F.normalize(logits1, dim=-1)
-            
-        if self.mt=='true' and self.training:
-            return logits1, logits2
-        elif aug and self.training:
-            return logits1, index, lam
+        if save_prob_seq:
+            return logits1, prob_seq
         else:
             return logits1
     
@@ -434,14 +416,11 @@ class Model(nn.Module):
         
         # get loss
         if self.loss in ['xentropy']:
-            if self.mt=='true' and self.training:
-                logits, logits2 = self.forward_logits(**input_data)
-                loss = self.get_losses(logits, data['label']).detach().cpu().numpy()
-                loss += self.w_mt * self.get_losses2(logits2, data['label2']).detach().cpu().numpy()
-            else:
-                logits = self.forward_logits(**input_data)
-                loss = self.get_losses(logits.reshape(-1,self.num_labels), data['label'].reshape(-1,)).detach().cpu().numpy()
+            input_data.update({'save_prob_seq':True})
+            logits, prob_seq = self.forward_logits(**input_data)
+            loss = self.get_losses(logits.reshape(-1,self.num_labels), data['label'].reshape(-1,)).detach().cpu().numpy()
         elif self.loss in ['bce']:
+            input_data.update({'save_prob_seq':False})
             logits = self.forward_logits(**input_data)
             loss  = self.get_losses(logits[:,0].reshape(-1,), data['Ineffective'].reshape(-1,)).detach().cpu().numpy() / 3
             loss += self.get_losses(logits[:,1].reshape(-1,), data['Adequate'].reshape(-1,)).detach().cpu().numpy() / 3
@@ -452,14 +431,17 @@ class Model(nn.Module):
         # get pred
         pred = logits.softmax(dim=-1).detach().cpu().numpy().reshape(-1,self.num_labels)
             
-        return {
+        output = {
             'loss':loss,
             'pred':pred,
             'label':data['label'].detach().cpu().numpy().reshape(-1,),
             'discourse_ids':data['discourse_ids'],
             'text':data['text'],
-            'essay_id':data['essay_id'],
+            'essay_id':data['essay_id']
         }
+        if input_data['save_prob_seq']:
+            output.update({'prob_seq':prob_seq})
+        return output
     
     def validation_epoch_end(self, outputs):
         losses = []
@@ -528,22 +510,22 @@ class Model(nn.Module):
 
                 },
             )
-        #optimizer = AdamW(optimizer_parameters, lr=self.learning_rate)
+        optimizer = AdamW(optimizer_parameters, lr=self.learning_rate)
         
         # https://www.kaggle.com/code/nbroad/8-bit-adam-optimization/notebook
         # These are the only changes you need to make
         # The first part sets the optimizer to use 8-bits
         # The for loop sets embeddings to use 32-bits
-        if self.adam_bits == 32:
-            optimizer = bnb.optim.AdamW32bit(optimizer_parameters, lr=self.learning_rate)
-        if self.adam_bits == 8:
-            optimizer = bnb.optim.AdamW8bit(optimizer_parameters, lr=self.learning_rate)
-            # Thank you @gregorlied https://www.kaggle.com/nbroad/8-bit-adam-optimization/comments#1661976
-            for module in self.transformer.modules():
-                if isinstance(module, torch.nn.Embedding):
-                    bnb.optim.GlobalOptimManager.get_instance().register_module_override(
-                        module, 'weight', {'optim_bits': 32}
-                    )   
+#         if self.adam_bits == 32:
+#             optimizer = bnb.optim.AdamW32bit(optimizer_parameters, lr=self.learning_rate)
+#         if self.adam_bits == 8:
+#             optimizer = bnb.optim.AdamW8bit(optimizer_parameters, lr=self.learning_rate)
+#             # Thank you @gregorlied https://www.kaggle.com/nbroad/8-bit-adam-optimization/comments#1661976
+#             for module in self.transformer.modules():
+#                 if isinstance(module, torch.nn.Embedding):
+#                     bnb.optim.GlobalOptimManager.get_instance().register_module_override(
+#                         module, 'weight', {'optim_bits': 32}
+#                     )   
         
         return optimizer
 
@@ -627,7 +609,7 @@ discourse_type_list = [
 ]
 
 class DatasetTrain(Dataset):
-    def __init__(self, df, tokenizer, mask_prob=0, mask_ratio=0, aug='false', mode='train'):
+    def __init__(self, df, tokenizer, mask_prob=0, mask_ratio=0, aug='false', mode='train', use_loss_weight=False):
         self.df = df
         self.unique_ids = sorted(df['essay_id'].unique())
         self.tokenizer = tokenizer
@@ -641,6 +623,10 @@ class DatasetTrain(Dataset):
         }
         self.inv_discourse_type_token_ids_dict = {v:k for k,v in self.discourse_type_token_ids_dict.items()}
         
+        self.use_loss_weight = use_loss_weight
+        if self.use_loss_weight:
+            self.mean_num_discourses = self.df.groupby('essay_id')['discourse_id'].count().mean()
+        
     def __len__(self):
         return len(self.unique_ids)
     
@@ -648,6 +634,10 @@ class DatasetTrain(Dataset):
         essay_id = self.unique_ids[idx]
         sample_df = self.df[self.df['essay_id']==essay_id].reset_index(drop=True)
         discourse_ids = sample_df['discourse_id'].values
+        
+        if self.use_loss_weight:
+            num_discourses = len(discourse_ids)
+            loss_weight = num_discourses / self.mean_num_discourses
 
         text = ''
         discourse_types = []
@@ -702,6 +692,10 @@ class DatasetTrain(Dataset):
                 Ineffective = ineffectives,
                 Adequate = adequates,
                 Effective = effectives,
+            ))
+        if self.use_loss_weight:
+            output.update(dict(
+                loss_weight = loss_weight
             ))
         return output
     
@@ -786,4 +780,8 @@ class CustomCollator(object):
             output["Adequate"] = torch.FloatTensor(output["Adequate"])
         if "Effective" in output.keys():
             output["Effective"] = torch.FloatTensor(output["Effective"])
+            
+        if "loss_weight" in output.keys():
+            output["loss_weight"] = torch.FloatTensor(output["loss_weight"])
+            
         return output

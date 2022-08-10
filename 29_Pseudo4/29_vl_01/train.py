@@ -99,6 +99,7 @@ def parse_args():
     parser.add_argument("--adam_bits", type=int, default=32, required=False)
     
     parser.add_argument("--mode", type=str, default='train', required=False)
+    parser.add_argument("--loss_weight", type=str, default='false', required=False)
     
     return parser.parse_args()
 
@@ -153,6 +154,26 @@ if __name__=='__main__':
     
     print('trn_df.shape = ', trn_df.shape)
     print('val_df.shape = ', val_df.shape)
+    
+    # https://www.kaggle.com/datasets/nbroad/deberta-v2-3-fast-tokenizer
+    # The following is necessary if you want to use the fast tokenizer for deberta v2 or v3
+    # This must be done before importing transformers
+    import shutil
+    from pathlib import Path
+    #transformers_path = Path("/opt/conda/lib/python3.8/site-packages/transformers")
+    transformers_path = Path("/home/ubuntu/env/lib/python3.8/site-packages/transformers")
+    input_dir = Path("../input/deberta-v2-3-fast-tokenizer")
+    convert_file = input_dir / "convert_slow_tokenizer.py"
+    conversion_path = transformers_path/convert_file.name
+    if conversion_path.exists():
+        conversion_path.unlink()
+    shutil.copy(convert_file, transformers_path)
+    deberta_v2_path = transformers_path / "models" / "deberta_v2"
+    for filename in ['tokenization_deberta_v2.py', 'tokenization_deberta_v2_fast.py']:
+        filepath = deberta_v2_path/filename
+        if filepath.exists():
+            filepath.unlink()
+        shutil.copy(input_dir/filename, filepath)
     
     from run import run
     run(args, trn_df, val_df, pseudo_df=None)

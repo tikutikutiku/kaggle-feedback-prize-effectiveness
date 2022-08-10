@@ -99,6 +99,7 @@ def parse_args():
     parser.add_argument("--adam_bits", type=int, default=32, required=False)
     
     parser.add_argument("--mode", type=str, default='train', required=False)
+    parser.add_argument("--loss_weight", type=str, default='false', required=False)
     
     return parser.parse_args()
 

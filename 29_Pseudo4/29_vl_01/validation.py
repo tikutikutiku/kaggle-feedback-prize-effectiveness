@@ -177,6 +177,7 @@ if __name__=='__main__':
     discourse_ids = []
     #texts = []
     #essay_ids = []
+    prob_seqs = []
     for o in outputs:
         preds.append(o['pred'])
         labels.append(o['label'])
@@ -184,6 +185,7 @@ if __name__=='__main__':
         discourse_ids.extend(o['discourse_ids'])
         #texts.extend(o['text'])
         #essay_ids.extend(o['essay_id'])
+        prob_seqs.extend(o['prob_seq'])
     
     preds = np.vstack(preds)
     labels = np.hstack(labels)
@@ -203,4 +205,7 @@ if __name__=='__main__':
     pred_df['pred_effective'] = preds[:,2]
     pred_df['label'] = labels
     pred_df['loss'] = losses
+    
+    pred_df['prob_seq'] = prob_seqs
+    
     pred_df.to_csv(f'./result/{args.version}/pred_fold{args.fold}.csv', index=False)
