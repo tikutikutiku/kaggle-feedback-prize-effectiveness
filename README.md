@@ -5,7 +5,8 @@ Team's solution summary : https://www.kaggle.com/competitions/feedback-prize-eff
 Inference code : TBD
 
 ## solution overview
-![part_of_solution_Tom](https://user-images.githubusercontent.com/10670302/186792541-904bfbf8-0ca6-4c1b-9222-7a6e089c6108.png)
+![part_of_solution_Tom](https://user-images.githubusercontent.com/10670302/186918739-9508425b-221f-4430-b4d2-2e7d0d0e579b.png)
+
 
 ## HARDWARE
 Ubuntu 18.04 LTS (2TB boot disk)  
@@ -60,7 +61,7 @@ run 05_v2_11.ipynb
 6. pretrain MLM with 2021 competition's data
 ```
 cd 21_MLM2/exp
-run 21_v1_01.ipynb
+run 21_v1_10.ipynb
 run 21_v2_14.ipynb
 ```
 
@@ -115,7 +116,7 @@ run 22_v2_01-pseudo.ipynb
 ```
 cd 29_Pseudo4
 run 29_v2_01/ensemble_to_create_pseudo_label.ipynb, then run exp/29_v2_01.ipynb
-run 29_v2_04/ensemble_to_create_pseudo_label.ipynb, then run exp/29_v2_04.ipynb
+run 29_v2_02/ensemble_to_create_pseudo_label.ipynb, then run exp/29_v2_02.ipynb
 run 29_vl_01/ensemble_to_create_pseudo_label.ipynb, then run exp/29_vl_01.ipynb
 ```
 
@@ -124,7 +125,7 @@ run 29_vl_01/ensemble_to_create_pseudo_label.ipynb, then run exp/29_vl_01.ipynb
 ```
 cd 29_Pseudo4/exp
 run 29_v2_01-pseudo.ipynb
-run 29_v2_04-pseudo.ipynb
+run 29_v2_02-pseudo.ipynb
 run 29_vl_01-pseudo.ipynb
 ```
 
