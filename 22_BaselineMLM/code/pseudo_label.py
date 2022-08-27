@@ -26,7 +26,7 @@ def seed_everything(seed: int):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fold_path", type=str, required=True)
+    #parser.add_argument("--fold_path", type=str, required=True)
     parser.add_argument("--fold", type=int, required=True)
     parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--version", type=str, required=True)
