@@ -128,10 +128,6 @@ if __name__=='__main__':
         
     LABEL = 'discourse_effectiveness'
     
-    #from preprocessing import generate_text
-    #train_df = generate_text(train_df)
-    #train_df = pd.read_csv(args.preprocessed_data_path)
-    
     if args.mode=='pseudo':
         train_df['label'] = train_df[['Ineffective','Adequate','Effective']].values.argmax(-1)
     else:
