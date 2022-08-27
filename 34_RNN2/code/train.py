@@ -106,7 +106,6 @@ def parse_args():
     
     
 if __name__=='__main__':
-#if True:
     NUM_JOBS = 12
     args = parse_args()
     if args.seed<0:
@@ -127,10 +126,6 @@ if __name__=='__main__':
         print('train_df.shape = ', train_df.shape)
         
     LABEL = 'discourse_effectiveness'
-    
-    #from preprocessing import generate_text
-    #train_df = generate_text(train_df)
-    #train_df = pd.read_csv(args.preprocessed_data_path)
     
     if args.mode=='pseudo':
         train_df['label'] = train_df[['Ineffective','Adequate','Effective']].values.argmax(-1)

@@ -64,12 +64,8 @@ def parse_args():
 
     
 from models import Model, DatasetTrain, CustomCollator
-# import sys
-# sys.path.append('../../../../../COCO-LM-main/huggingface')
-# from cocolm.tokenization_cocolm import COCOLMTokenizer
     
 if __name__=='__main__':
-#if True:
     NUM_JOBS = 12
     args = parse_args()
     if args.seed<0:
@@ -86,10 +82,6 @@ if __name__=='__main__':
     print('sub_df.shape = ', sub_df.shape)
 
     LABEL = 'discourse_effectiveness'
-    
-    #from preprocessing import generate_text
-    #train_df = generate_text(train_df)
-    #train_df = pd.read_csv(args.preprocessed_data_path)
     train_df['label'] = train_df[LABEL].map({'Ineffective':0, 'Adequate':1, 'Effective':2})
 
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
@@ -125,7 +117,6 @@ if __name__=='__main__':
     val_dataset = DatasetTrain(
         val_df, 
         tokenizer,
-        #max_length=args.max_length
     )
     from torch.utils.data import DataLoader
     val_dataloader = DataLoader(
@@ -175,16 +166,12 @@ if __name__=='__main__':
     labels = []
     losses = []
     discourse_ids = []
-    #texts = []
-    #essay_ids = []
     prob_seqs = []
     for o in outputs:
         preds.append(o['pred'])
         labels.append(o['label'])
         losses.append(o['loss'])
         discourse_ids.extend(o['discourse_ids'])
-        #texts.extend(o['text'])
-        #essay_ids.extend(o['essay_id'])
         prob_seqs.extend(o['prob_seq'])
     
     preds = np.vstack(preds)
@@ -198,7 +185,6 @@ if __name__=='__main__':
     print('discourse_ids.shape = ', discourse_ids.shape)
     
     pred_df = pd.DataFrame()
-    #pred_df['essay_id'] = essay_ids
     pred_df['discourse_id'] = discourse_ids
     pred_df['pred_ineffective'] = preds[:,0]
     pred_df['pred_adequate'] = preds[:,1]

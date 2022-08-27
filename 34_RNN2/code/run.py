@@ -9,9 +9,6 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from models import Model, DatasetTrain, CustomCollator
-# import sys
-# sys.path.append('../../../../../COCO-LM-main/huggingface')
-# from cocolm.tokenization_cocolm import COCOLMTokenizer
 from transformers import AutoTokenizer
 from preprocessing import relation_mapper
 from awp import AWP
@@ -22,7 +19,7 @@ transformers.logging.set_verbosity_error()
 def run(args, trn_df, val_df, pseudo_df=None):
     output_path = opj(f'./result', args.version)
     if True:
-        if 'deberta-v2' in args.model or  'deberta-v3' in args.model:
+        if 'deberta-v2' in args.model or 'deberta-v3' in args.model:
             from transformers.models.deberta_v2 import DebertaV2TokenizerFast
             tokenizer = DebertaV2TokenizerFast.from_pretrained(args.model, trim_offsets=False)
             special_tokens_dict = {'additional_special_tokens': ['\n\n'] + [f'[{s.upper()}]' for s in list(relation_mapper.keys())]}
@@ -156,7 +153,6 @@ def run(args, trn_df, val_df, pseudo_df=None):
                         scheduler.step()
                 continue
                 
-            #print('lr = ', scheduler.get_lr()[0])
             print('lr : ', [ group['lr'] for group in optimizer.param_groups ])
             
             #train
@@ -203,11 +199,9 @@ def run(args, trn_df, val_df, pseudo_df=None):
                         optimizer.zero_grad()
                         scheduler.step()
                 
-                #trn_score += score * batch
                 trn_preds.append(pred)
                 trn_trues.append(label)
                 counter  += len(pred)
-                #tk0.set_postfix(loss=(trn_loss / (counter * trn_dataloader.batch_size) ))
                 tk0.set_postfix(loss=(trn_loss / counter))
                 
                 # eval
@@ -227,51 +221,14 @@ def run(args, trn_df, val_df, pseudo_df=None):
                     #monitering
                     print('\nepoch {:.0f}: trn_loss = {:.4f}, val_loss = {:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
                         epoch, 
-                        #trn_loss / ((counter * trn_dataloader.batch_size)), 
-                        #trn_loss / len(trn_df), 
-                        trn / counter,
+                        trn_loss / counter,
                         val_loss, 
                         trn_score,
                         val_score
                     ))
                     if args.slack_url!='none':
-                        from utils import post_message
-                        post_message(name='bot',
-                                     message='epoch {:.0f}: trn_loss = {:.4f}, val_loss={:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
-                                         epoch, trn_loss, val_loss, trn_score, val_score), 
-                                     incoming_webhook_url=args.slack_url)
-#                     if args.early_stopping=='true':
-#                         if val_loss < val_loss_best: #val_score > val_score_best:
-#                             val_score_best = val_score #update
-#                             val_loss_best  = val_loss #update
-#                             epoch_best     = epoch #update
-#                             counter_ES     = 0 #reset
-#                             if args.mode=='pseudo':
-#                                 torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
-#                             else:
-#                                 torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-#                             print('model (best loss) saved')
-#                         else:
-#                             counter_ES += 1
-#                         if counter_ES > args.patience:
-#                             print('early stopping, epoch_best {:.0f}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(
-#                                 epoch_best, val_loss_best, val_score_best))
-#                             break
-#                     else:
-#                         if args.mode=='pseudo':
-#                             torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
-#                         else:
-#                             torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-
-#                     if val_score > val_score_best2:
-#                         val_score_best2 = val_score #update
-#                         if args.mode=='pseudo':
-#                             torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_pseudo.pth')) #save
-#                         else:
-#                             torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
-#                         print('model (best score) saved')
+                        pass
                 
-            #trn_loss = trn_loss / len(trn_dataset)
             trn_loss = trn_loss / counter
             trn_score = model.get_scores(np.vstack(trn_preds), np.hstack(trn_trues))
             
@@ -308,49 +265,10 @@ def run(args, trn_df, val_df, pseudo_df=None):
                 val_score
             ))
             if args.slack_url!='none':
-                from utils import post_message
-                post_message(name='bot',
-                             message='epoch {:.0f}: trn_loss = {:.4f}, val_loss={:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
-                                 epoch, trn_loss, val_loss, trn_score, val_score), 
-                             incoming_webhook_url=args.slack_url)
+                pass
             if epoch%10 == 0:
                 print(' elapsed_time = {:.1f} min'.format((time.time() - start_time)/60))
                 
-#             if args.early_stopping=='true':
-#                 if val_loss < val_loss_best: #val_score > val_score_best:
-#                     val_score_best = val_score #update
-#                     val_loss_best  = val_loss #update
-#                     epoch_best     = epoch #update
-#                     counter_ES     = 0 #reset
-#                     if args.mode=='pseudo':
-#                         torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
-#                     else:
-#                         torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-#                     print('model (best loss) saved')
-#                 else:
-#                     counter_ES += 1
-#                 if counter_ES > args.patience:
-#                     print('early stopping, epoch_best {:.0f}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(
-#                         epoch_best, val_loss_best, val_score_best))
-#                     break
-#             else:
-#                 if args.mode=='pseudo':
-#                     torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss_pseudo.pth')) #save
-#                 else:
-#                     torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-               
-#             if val_score > val_score_best2:
-#                 val_score_best2 = val_score #update
-#                 if args.mode=='pseudo':
-#                     torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_pseudo.pth')) #save
-#                 else:
-#                     torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
-#                 print('model (best score) saved')
-                
-#         #best model
-#         if args.early_stopping=='true' and counter_ES<=args.patience:
-#             print('epoch_best {:d}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(epoch_best, val_loss_best, val_score_best))
-        
         del model
         torch.cuda.empty_cache()
         gc.collect()

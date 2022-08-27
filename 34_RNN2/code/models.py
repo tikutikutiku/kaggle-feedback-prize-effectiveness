@@ -32,10 +32,6 @@ from transformers import (AutoConfig, AutoModel, AutoTokenizer, AdamW,
                           get_linear_schedule_with_warmup)
 
 import sys
-# sys.path.append('../../../../../COCO-LM-main/huggingface')
-# from cocolm.modeling_cocolm import COCOLMModel
-# from cocolm.configuration_cocolm import COCOLMConfig
-from sift import hook_sift_layer, AdversarialLearner
 from sklearn.metrics import log_loss
 import bitsandbytes as bnb
 
@@ -558,16 +554,6 @@ class Model(nn.Module):
         
         return optimizer
 
-#     def fetch_scheduler(self, optimizer):
-#         scheduler = get_cosine_schedule_with_warmup(
-#             optimizer,
-#             num_warmup_steps=int(self.warmup_ratio * self.num_train_steps),
-#             num_training_steps=self.num_train_steps,
-#             num_cycles=0.5,
-#             last_epoch=-1,
-#         )
-#         return scheduler
-    
     def fetch_scheduler(self, optimizer):
         print('self.warmup_ratio = ', self.warmup_ratio)
         print('self.num_train_steps = ', self.num_train_steps)
