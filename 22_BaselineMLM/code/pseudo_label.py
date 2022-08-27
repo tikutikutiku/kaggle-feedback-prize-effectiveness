@@ -58,12 +58,8 @@ def parse_args():
 
     
 from models import Model, DatasetTest, CustomCollator
-# import sys
-# sys.path.append('../../../../../COCO-LM-main/huggingface')
-# from cocolm.tokenization_cocolm import COCOLMTokenizer
     
 if __name__=='__main__':
-#if True:
     NUM_JOBS = 12
     args = parse_args()
     if args.seed<0:
@@ -71,27 +67,13 @@ if __name__=='__main__':
     else:
         seed_everything(args.fold + args.seed)
         
-    #train_df = pd.read_csv(opj(args.input_path, 'train.csv'))
-    #test_df = pd.read_csv(opj(args.input_path, 'test.csv'))
-    #sub_df = pd.read_csv(opj(args.input_path, 'sample_submission.csv'))
-    #print('train_df.shape = ', train_df.shape)
-    #print('test_df.shape = ', test_df.shape)
-    #print('sub_df.shape = ', sub_df.shape)
-
-    #LABEL = 'discourse_effectiveness'
-    
-    #from preprocessing import generate_text
-    #train_df = generate_text(train_df)
-    #train_df = pd.read_csv(args.preprocessed_data_path)
-    #train_df['label'] = train_df[LABEL].map({'Ineffective':0, 'Adequate':1, 'Effective':2})
-
     test_df = pd.read_csv(args.unlabeled_data_path)
     print('test_df.shape = ', test_df.shape)
     
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
     from preprocessing import relation_mapper
-    if 'deberta-v2' in args.model or  'deberta-v3' in args.model:
+    if 'deberta-v2' in args.model or 'deberta-v3' in args.model:
         from transformers.models.deberta_v2 import DebertaV2TokenizerFast
         tokenizer = DebertaV2TokenizerFast.from_pretrained(args.model, trim_offsets=False)
         special_tokens_dict = {'additional_special_tokens': ['\n\n'] + [f'[{s.upper()}]' for s in list(relation_mapper.keys())]}
@@ -163,19 +145,3 @@ if __name__=='__main__':
     pred_df['Effective'] = preds[:,2]
     pred_df['discourse_effectiveness'] = preds.argmax(axis=1)
     pred_df.to_csv(f'./result/{args.version}/pseudo_fold{args.fold}.csv', index=False)
-    
-    
-#     raw_oof = {
-#         data_id:{
-#             'pred':pred, 
-#             'text':text
-#         } for data_id,pred,text in zip(
-#             data_ids, preds, texts
-#         )
-#     }
-#     print('len(raw_oof) = ', len(raw_oof))
-#     import joblib
-#     print(f'save raw_oof_fold{args.fold}...')
-#     joblib.dump(raw_oof, f'./result/{args.version}/raw_pseudo_fold{args.fold}.joblib')
-#     print(f'save raw_oof_fold{args.fold}, done')
-#     print('\n')
