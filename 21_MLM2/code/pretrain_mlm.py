@@ -31,7 +31,6 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--fold_path", type=str, required=True)
     parser.add_argument("--fold", type=int, required=True)
-    #parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--version", type=str, required=True)
     parser.add_argument("--seed", type=int, default=-1, required=True)
     parser.add_argument("--input_path", type=str, default='../../input/feedback-prize-2021/', required=False)
@@ -63,7 +62,6 @@ def parse_args():
     parser.add_argument("--freeze_layers", type=str, default='false', required=False)
     
     parser.add_argument("--generator", type=str, required=True)
-    #parser.add_argument("--rtd_lambda", type=float, default=50, required=False)
     parser.add_argument("--scheduler", type=str, default='cosine', required=False)
     parser.add_argument("--num_cycles", type=int, default=1, required=False)
     parser.add_argument("--check_pointing", type=str, default='false', required=False)
@@ -104,9 +102,6 @@ if __name__=='__main__':
     val_df = train_df[train_df['essay_id'].isin(val_ids_list[args.fold])].reset_index(drop=True)
     #trn_df = train_df[train_df['essay_id'].isin(trn_ids_list[args.fold][:30])].reset_index(drop=True)
     #val_df = train_df[train_df['essay_id'].isin(val_ids_list[args.fold][:30])].reset_index(drop=True)
-    
-    #trn_df = trn_df.rename(columns={'essay_id':'id'})
-    #val_df = val_df.rename(columns={'essay_id':'id'})
 
     print('trn_df.shape = ', trn_df.shape)
     print('val_df.shape = ', val_df.shape)

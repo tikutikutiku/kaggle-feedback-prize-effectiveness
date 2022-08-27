@@ -8,22 +8,7 @@ from tqdm import tqdm
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
-#from models import Model, DatasetTrain, CustomCollator
 from models_pretrain_generator import DatasetTrain, CustomCollator, Model as Generator
-#from models_pretrain_discriminator import Model as Discriminator
-# import sys
-# sys.path.append('../../../../../COCO-LM-main/huggingface')
-# from cocolm.tokenization_cocolm import COCOLMTokenizer
-
-# discourse_type_list = [
-#     'Lead',
-#     'Position',
-#     'Claim',
-#     'Evidence',
-#     'Counterclaim',
-#     'Rebuttal',
-#     'Concluding Statement'
-# ]
 discourse_type_list = [
     'Lead',
     'Position',
@@ -107,19 +92,7 @@ def run(args, trn_df, val_df, pseudo_df=None):
                               inner_len=args.inner_len,
                               edge_len=args.edge_len,
                              )
-#         model = Discriminator(args.model, 
-#                       tokenizer,
-#                       num_labels=1, 
-#                       hidden_dropout_prob=args.hidden_drop_prob, 
-#                       p_drop=args.p_drop,
-#                       learning_rate=args.lr,
-#                       head_learning_rate=args.head_lr,
-#                       num_train_steps=num_train_steps,
-#                       warmup_ratio=args.warmup_ratio,
-#                       ratio_masking=args.ratio_masking,
-#                      )
         model_gen = model_gen.cuda()
-        #model = model.cuda()
         if args.pretrain_path != 'none':
             model_gen.load_state_dict(torch.load(args.pretrain_path))
         
@@ -128,9 +101,6 @@ def run(args, trn_df, val_df, pseudo_df=None):
         
         [optimizer_gen], [scheduler_gen] = model_gen.configure_optimizers()
         scheduler_gen = scheduler_gen['scheduler']
-        
-        #[optimizer], [scheduler] = model.configure_optimizers()
-        #scheduler = scheduler['scheduler']
         
         #training
         val_score_best  = -1e+99
@@ -149,11 +119,8 @@ def run(args, trn_df, val_df, pseudo_df=None):
                 for i,data in enumerate(tk0):
                     if (i + 1) % args.accumulate_grad_batches == 0:
                         scheduler_gen.step()
-                        #scheduler.step()
                 continue
                 
-            #print('lr = ', scheduler.get_lr()[0])
-            #print('lr : ', [ group['lr'] for group in optimizer.param_groups ])
             print('lr : ', [ group['lr'] for group in optimizer_gen.param_groups ])
             
             #train
@@ -164,48 +131,31 @@ def run(args, trn_df, val_df, pseudo_df=None):
             counter = 0
             tk0 = tqdm(trn_dataloader, total=int(len(trn_dataloader)))
             optimizer_gen.zero_grad()
-            #optimizer.zero_grad()
             for i,data in enumerate(tk0):
                 model_gen.train()
-                #model.train()
                 batch = len(data['data_id'])
                 
                 with torch.cuda.amp.autocast(enabled=(args.fp16=='true')):
                     # MLM task for generator
                     loss_gen, score_gen, output_data_gen = model_gen.training_step(data)
                         
-                    #import joblib
-                    #joblib.dump(output_data_gen, './result/output_data_gen.joblib')
-                    #return
-
-                    # RTD task for discriminator
-                    #loss, score = model.training_step(output_data_gen)
-                        
                     if args.accumulate_grad_batches > 1:
                         loss_gen = loss_gen / args.accumulate_grad_batches
-                        #loss = loss / args.accumulate_grad_batches
                         
                     #scaler.scale(args.rtd_lambda * loss + loss_gen).backward()
                     scaler.scale(loss_gen).backward()
                         
                     grad_norm_gen = torch.nn.utils.clip_grad_norm_(model_gen.parameters(), args.gradient_clip_val)
-                    #grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), args.gradient_clip_val)
                 
                     if (i + 1) % args.accumulate_grad_batches == 0:
-                        #scaler.step(optimizer)
                         scaler.step(optimizer_gen)
                         scaler.update()
-                        #optimizer.zero_grad()
                         optimizer_gen.zero_grad()
-                        #scheduler.step()
                         scheduler_gen.step()
                 
                 trn_loss_gen += loss_gen.item() * batch * args.accumulate_grad_batches
                 trn_score_gen += score_gen * batch
-                #trn_loss += loss.item() * batch
-                #trn_score += score * batch
                 counter  += 1
-                #tk0.set_postfix(loss=(trn_loss / (counter * trn_dataloader.batch_size) ))
                 tk0.set_postfix(
                     loss=(trn_loss_gen / (counter * trn_dataloader.batch_size) ),
                     score=(trn_score_gen / (counter * trn_dataloader.batch_size))
@@ -214,9 +164,7 @@ def run(args, trn_df, val_df, pseudo_df=None):
                 # eval
                 if args.eval_step!=-1 and (i+1)%args.eval_step==0:
                     model_gen.eval()
-                    #model.eval()
                     outputs_gen = []
-                    #outputs = []
                     for i,data in enumerate(val_dataloader):
                         with torch.no_grad():
                             
@@ -224,15 +172,11 @@ def run(args, trn_df, val_df, pseudo_df=None):
                             output_gen, output_data_gen = model_gen.validation_step(data)
                             outputs_gen.append(output_gen)
                             
-                            # RTD task for discriminator
-                            #outputs.append(model.validation_step(output_data_gen))
-                            
                         #release GPU memory cache
                         del data
                         torch.cuda.empty_cache()
                         gc.collect()
                     val_loss_gen, val_score_gen = model_gen.validation_epoch_end(outputs_gen)
-                    #val_loss, val_score = model.validation_epoch_end(outputs)
 
                     #monitering
                     print('\nepoch {:.0f}: trn_loss_gen = {:.4f}, val_loss_gen = {:.4f}, trn_score_gen = {:.4f}, val_score_gen = {:.4f}'.format(
@@ -242,40 +186,6 @@ def run(args, trn_df, val_df, pseudo_df=None):
                         trn_score_gen / (counter * trn_dataloader.batch_size),
                         val_score_gen)
                          )
-#                     print('\nepoch {:.0f}: trn_loss = {:.4f}, val_loss = {:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
-#                         epoch,
-#                         trn_loss / (counter * trn_dataloader.batch_size), 
-#                         val_loss,
-#                         trn_score / (counter * trn_dataloader.batch_size),
-#                         val_score)
-#                          )
-#                     if args.slack_url!='none':
-#                         from utils import post_message
-#                         post_message(name='bot',
-#                                      message='epoch {:.0f}: trn_loss = {:.4f}, val_loss={:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
-#                                          epoch, 
-#                                          trn_loss / (counter * trn_dataloader.batch_size),
-#                                          val_loss, 
-#                                          trn_score / (counter * trn_dataloader.batch_size), 
-#                                          val_score), 
-#                                          incoming_webhook_url=args.slack_url
-#                                     )
-#                     if args.early_stopping=='true':
-#                         if val_loss < val_loss_best: #val_score > val_score_best:
-#                             val_score_best = val_score #update
-#                             val_loss_best  = val_loss #update
-#                             epoch_best     = epoch #update
-#                             counter_ES     = 0 #reset
-#                             torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-#                             print('model_gen (best loss) saved')
-#                             #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-#                             #print('model (best loss) saved')
-#                         else:
-#                             counter_ES += 1
-#                         if counter_ES > args.patience:
-#                             print('early stopping, epoch_best {:.0f}, val_loss_best {:.5f}, val_score_best {:.5f}'.format(
-#                                 epoch_best, val_loss_best, val_score_best))
-#                             break
                     if args.early_stopping=='true':
                         if val_loss_gen < val_loss_best: #val_score > val_score_best:
                             val_score_best = val_score_gen #update
@@ -284,8 +194,6 @@ def run(args, trn_df, val_df, pseudo_df=None):
                             counter_ES     = 0 #reset
                             torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
                             print('model_gen (best loss) saved')
-                            #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-                            #print('model (best loss) saved')
                         else:
                             counter_ES += 1
                         if counter_ES > args.patience:
@@ -294,23 +202,11 @@ def run(args, trn_df, val_df, pseudo_df=None):
                             break
                     else:
                         torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-                        #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-
-#                     if val_score > val_score_best2:
-#                         val_score_best2 = val_score #update
-#                         torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}.pth')) #save
-#                         print('model_gen (best score) saved')
-#                         #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
-#                         #print('model (best score) saved')
                     if val_score_gen > val_score_best2:
                         val_score_best2 = val_score_gen #update
                         torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}.pth')) #save
                         print('model_gen (best score) saved')
-                        #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
-                        #print('model (best score) saved')
                 
-            #trn_loss = trn_loss / len(trn_dataset)
-            #trn_score = trn_score / len(trn_dataset)
             trn_loss_gen = trn_loss_gen / len(trn_dataset)
             trn_score_gen = trn_score_gen / len(trn_dataset)
             
@@ -321,13 +217,10 @@ def run(args, trn_df, val_df, pseudo_df=None):
             
             # save model
             torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}_epoch{epoch}.pth')) #save
-            #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_epoch{epoch}.pth')) #save
 
             #eval
             model_gen.eval()
-            #model.eval()
             outputs_gen = []
-            #outputs = []
             tk1 = tqdm(val_dataloader, total=int(len(val_dataloader)))
             for i,data in enumerate(tk1):
                 with torch.no_grad():
@@ -336,15 +229,11 @@ def run(args, trn_df, val_df, pseudo_df=None):
                     output_gen, output_data_gen = model_gen.validation_step(data)
                     outputs_gen.append(output_gen)
                             
-                    # RTD task for discriminator
-                    #outputs.append(model.validation_step(output_data_gen))
-                    
                 #release GPU memory cache
                 del data
                 torch.cuda.empty_cache()
                 gc.collect()
             val_loss_gen, val_score_gen = model_gen.validation_epoch_end(outputs_gen)
-            #val_loss, val_score = model.validation_epoch_end(outputs)
             
             #monitering
             print('\nepoch {:.0f}: trn_loss_gen = {:.4f}, val_loss_gen = {:.4f}, trn_score_gen = {:.4f}, val_score_gen = {:.4f}'.format(
@@ -354,37 +243,10 @@ def run(args, trn_df, val_df, pseudo_df=None):
                 trn_score_gen,
                 val_score_gen)
                  )
-#             print('\nepoch {:.0f}: trn_loss = {:.4f}, val_loss = {:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
-#                 epoch,
-#                 trn_loss,
-#                 val_loss,
-#                 trn_score,
-#                 val_score)
-#                  )
-#             if args.slack_url!='none':
-#                 from utils import post_message
-#                 post_message(name='bot',
-#                              message='epoch {:.0f}: trn_loss = {:.4f}, val_loss={:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
-#                                  epoch, 
-#                                  trn_loss,
-#                                  val_loss, 
-#                                  trn_score,
-#                                  val_score), 
-#                              incoming_webhook_url=args.slack_url
-#                             )
             if epoch%10 == 0:
                 print(' elapsed_time = {:.1f} min'.format((time.time() - start_time)/60))
                 
             if args.early_stopping=='true':
-#                 if val_loss < val_loss_best: #val_score > val_score_best:
-#                     val_score_best = val_score #update
-#                     val_loss_best  = val_loss #update
-#                     epoch_best     = epoch #update
-#                     counter_ES     = 0 #reset
-#                     torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-#                     print('model_gen (best loss) saved')
-#                     #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-#                     #print('model (best loss) saved')
                 if val_loss_gen < val_loss_best: #val_score > val_score_best:
                     val_score_best = val_score_gen #update
                     val_loss_best  = val_loss_gen #update
@@ -392,8 +254,6 @@ def run(args, trn_df, val_df, pseudo_df=None):
                     counter_ES     = 0 #reset
                     torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
                     print('model_gen (best loss) saved')
-                    #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-                    #print('model (best loss) saved')
                 else:
                     counter_ES += 1
                 if counter_ES > args.patience:
@@ -402,20 +262,11 @@ def run(args, trn_df, val_df, pseudo_df=None):
                     break
             else:
                 torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-                #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}_bestloss.pth')) #save
-                
-#             if val_score > val_score_best2:
-#                 val_score_best2 = val_score #update
-#                 torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}.pth')) #save
-#                 print('model_gen (best score) saved')
-#                 #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
-#                 #print('model (best score) saved')
+            
             if val_score_gen > val_score_best2:
                 val_score_best2 = val_score_gen #update
                 torch.save(model_gen.state_dict(), opj(output_path,f'model_gen_seed{args.seed}_fold{args.fold}.pth')) #save
                 print('model_gen (best score) saved')
-                #torch.save(model.state_dict(), opj(output_path,f'model_seed{args.seed}_fold{args.fold}.pth')) #save
-                #print('model (best score) saved')
                 
         #best model
         if args.early_stopping=='true' and counter_ES<=args.patience:
