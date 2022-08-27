@@ -25,12 +25,11 @@ nvidia drivers v.460
 0. download data from Kaggle  
 this competition's data : https://www.kaggle.com/competitions/feedback-prize-effectiveness/data  
 2021 competition's data : https://www.kaggle.com/competitions/feedback-prize-2021/data  
-put them into 
+put them as follows, respectively 
 ```
 input/feedback-prize-effectiveness
 input/feedback-prize-2021
 ```
-respectively
 
 
 1. data split for kaggle train data  
