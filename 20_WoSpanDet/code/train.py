@@ -119,10 +119,6 @@ if __name__=='__main__':
     print('sub_df.shape = ', sub_df.shape)
 
     LABEL = 'discourse_effectiveness'
-    
-    #from preprocessing import generate_text
-    #train_df = generate_text(train_df)
-    #train_df = pd.read_csv(args.preprocessed_data_path)
     train_df['label'] = train_df[LABEL].map({'Ineffective':0, 'Adequate':1, 'Effective':2})
 
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
