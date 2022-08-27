@@ -2,7 +2,6 @@
 
 from os.path import join as opj
 import re
-import time
 
 import pandas as pd
 import numpy as np
@@ -66,15 +65,9 @@ class TextSpanDetector(nn.Module):
     def __init__(self,
                  model_name,
                  tokenizer,
-                 #num_labels=7, 
-                 #num_labels_2,
-                 
                  num_classes=7,
                  dynamic_positive=False,
                  with_cp=False,
-                 #local_files_only=True,
-                 #init_cfg=None,
-                 
                  hidden_dropout_prob=0, 
                  learning_rate=1e-5,
                  head_learning_rate=1e-3,
@@ -96,7 +89,6 @@ class TextSpanDetector(nn.Module):
                  s=30,
                  weight_decay=0.01,
                  freeze_layers='false',
-                 #max_length=args.max_length,
                  mt='false',
                  w_mt=1,
                  scheduler='cosine',
@@ -109,9 +101,7 @@ class TextSpanDetector(nn.Module):
         self.hidden_dropout_prob = hidden_dropout_prob
         self.warmup_ratio = warmup_ratio 
         self.num_train_steps = num_train_steps
-        #self.num_labels = num_labels
         self.num_labels = 1 + 2 + num_classes
-        #self.num_labels_2 = num_labels_2
         self.tokenizer = tokenizer
         self.model_name = model_name
         self.loss = loss
@@ -133,12 +123,6 @@ class TextSpanDetector(nn.Module):
         self.num_classes = num_classes
         self.dynamic_positive = dynamic_positive
         
-#         self.model = AutoModelForTokenClassification.from_pretrained(
-#             model_name,
-#             num_labels=1 + 2 + num_classes,
-#             local_files_only=False, #local_files_only
-#         )
-
         if model_pretraining is not None:
             self.transformer = model_pretraining.transformer
             self.config = model_pretraining.config
@@ -156,7 +140,6 @@ class TextSpanDetector(nn.Module):
             
         # resize
         self.transformer.resize_token_embeddings(len(tokenizer))
-        #self.model.resize_token_embeddings(len(tokenizer))
         
         if with_cp:
             self.transformer.gradient_checkpointing_enable()
@@ -165,13 +148,6 @@ class TextSpanDetector(nn.Module):
             nn.Dropout(p_drop),
             nn.Linear(self.config.hidden_size, self.num_labels)
         )
-            
-#         # init bias
-#         from mmcv.cnn import bias_init_with_prob
-#         self.model.classifier.bias.data[0].fill_(bias_init_with_prob(0.02))
-#         self.model.classifier.bias.data[3:].fill_(
-#             bias_init_with_prob(1 / self.num_classes))
-        
         self._init_weights(self.head)
     
     def _init_weights(self, module):
@@ -193,8 +169,6 @@ class TextSpanDetector(nn.Module):
         logits = self.transformer(input_ids=data['input_ids'],
                                   attention_mask=data['attention_mask']).last_hidden_state
         logits = self.head(logits)
-        #logits = self.model(input_ids=data['input_ids'],
-        #                    attention_mask=data['attention_mask'])['logits']
         logits = aggregate_tokens_to_words(logits, data['word_boxes'])
         assert logits.size(0) == data['text'].split().__len__()
 
@@ -344,9 +318,7 @@ class TextSpanDetector(nn.Module):
     
     def fetch_optimizer(self):
         head_params = list(self.head.named_parameters())
-        #head2_params = list(self.head2.named_parameters())
         param_optimizer = list(self.transformer.named_parameters())
-        #param_optimizer = list(self.model.named_parameters())
         no_decay = ["bias", "LayerNorm.bias"]
         optimizer_parameters = [
             {
@@ -362,11 +334,6 @@ class TextSpanDetector(nn.Module):
                 "weight_decay": 0.01,
                 "lr": self.head_learning_rate,
             },
-#             {
-#                 "params": [p for n,p in head2_params], 
-#                 "weight_decay": 0.01,
-#                 "lr": self.head_learning_rate,
-#             },
         ]
         optimizer = AdamW(optimizer_parameters, lr=self.learning_rate)
         return optimizer
@@ -440,9 +407,6 @@ class TextSpanDetector(nn.Module):
         obj_target = torch.zeros_like(obj_pred)
         reg_target = torch.zeros_like(reg_pred)
         cls_target = torch.zeros_like(cls_pred)
-        #obj_target = torch.zeros_like(obj_pred).float()
-        #reg_target = torch.zeros_like(reg_pred).float()
-        #cls_target = torch.zeros_like(cls_pred).float()
         
         # first token as positive
         pos_loc = gt_spans[:, 0]
@@ -456,9 +420,6 @@ class TextSpanDetector(nn.Module):
         if self.dynamic_positive:
             cls_prob = (obj_pred.sigmoid().unsqueeze(1) *
                         cls_pred.sigmoid()).sqrt()
-            #cls_prob = (obj_pred.sigmoid().unsqueeze(1) *
-            #            cls_pred.sigmoid()).sqrt().float()
-            #cls_prob = -1 * (1/cls_prob - 1).log()
             for start, end, label in gt_spans:
                 _cls_prob = cls_prob[start:end]
                 _cls_gt = _cls_prob.new_full((_cls_prob.size(0), ),
@@ -469,9 +430,6 @@ class TextSpanDetector(nn.Module):
                 cls_cost = F.binary_cross_entropy(_cls_prob,
                                                   _cls_gt,
                                                   reduction='none').sum(-1)
-                #cls_cost = F.binary_cross_entropy_with_logits(_cls_prob,
-                #                                              _cls_gt,
-                #                                              reduction='none').sum(-1)
                 _reg_pred = reg_pred[start:end].exp()
                 _reg_loc = torch.arange(_reg_pred.size(0),
                                         device=_reg_pred.device)

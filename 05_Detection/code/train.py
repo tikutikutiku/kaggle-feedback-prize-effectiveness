@@ -31,9 +31,7 @@ def parse_args():
     parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--version", type=str, required=True)
     parser.add_argument("--seed", type=int, default=-1, required=True)
-    #parser.add_argument("--input_path", type=str, default='../../input/feedback-prize-effectiveness/', required=False)
     parser.add_argument("--input_path", type=str, default='../../input/feedback-prize-2021/', required=False)
-    #parser.add_argument("--input_path", type=str, default='../../00_EDA/00_v2_04/result/', required=False)
     
     parser.add_argument("--lr", type=float, required=True)
     parser.add_argument("--head_lr", type=float, required=True)
@@ -63,9 +61,6 @@ def parse_args():
     parser.add_argument("--eval_step", type=int, default=-1, required=False)
     parser.add_argument("--stop_epoch", type=int, default=999, required=False)
     
-    #parser.add_argument("--num_labels", type=int, default=3, required=False)
-    #parser.add_argument("--num_labels", type=int, default=7, required=False)
-    #parser.add_argument("--num_labels_2", type=int, default=7, required=False)
     parser.add_argument("--num_classes", type=int, default=7, required=False)
     
     parser.add_argument("--mixup_alpha", type=float, default=1.0, required=False)
@@ -89,7 +84,6 @@ def parse_args():
     parser.add_argument("--awp_eps", type=float, default=0.01, required=False)
     parser.add_argument("--awp_start_epoch", type=int, default=0, required=False)
     
-    #parser.add_argument("--train_text_dir", type=str, default='../../input/feedback-prize-effectiveness/train/', required=False)
     parser.add_argument("--train_text_dir", type=str, default='../../input/feedback-prize-2021/train/', required=False)
     parser.add_argument("--test_score_thr", type=float, default=0.5, required=False)
     
@@ -111,20 +105,7 @@ if __name__=='__main__':
         seed_everything(args.fold + args.seed)
         
     train_df = pd.read_csv(opj(args.input_path, 'train.csv')).rename(columns={'id':'essay_id'})
-    #train_df = pd.read_csv(opj(args.input_path, 'unlabeled.csv'))
-    #test_df = pd.read_csv(opj(args.input_path, 'test.csv'))
-    #sub_df = pd.read_csv(opj(args.input_path, 'sample_submission.csv'))
-
     print('train_df.shape = ', train_df.shape)
-    #print('test_df.shape = ', test_df.shape)
-    #print('sub_df.shape = ', sub_df.shape)
-
-    #LABEL = 'discourse_effectiveness'
-    
-    #from preprocessing import generate_text
-    #train_df = generate_text(train_df)
-    #train_df = pd.read_csv(args.preprocessed_data_path)
-    #train_df['label'] = train_df[LABEL].map({'Ineffective':0, 'Adequate':1, 'Effective':2})
 
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
