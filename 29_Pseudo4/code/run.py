@@ -228,6 +228,7 @@ def run(args, trn_df, val_df, pseudo_df=None):
                     ))
                     if args.slack_url!='none':
                         pass
+                
             trn_loss = trn_loss / counter
             trn_score = model.get_scores(np.vstack(trn_preds), np.hstack(trn_trues))
             
@@ -264,11 +265,7 @@ def run(args, trn_df, val_df, pseudo_df=None):
                 val_score
             ))
             if args.slack_url!='none':
-                from utils import post_message
-                post_message(name='bot',
-                             message='epoch {:.0f}: trn_loss = {:.4f}, val_loss={:.4f}, trn_score = {:.4f}, val_score = {:.4f}'.format(
-                                 epoch, trn_loss, val_loss, trn_score, val_score), 
-                             incoming_webhook_url=args.slack_url)
+                pass
             if epoch%10 == 0:
                 print(' elapsed_time = {:.1f} min'.format((time.time() - start_time)/60))
                 
