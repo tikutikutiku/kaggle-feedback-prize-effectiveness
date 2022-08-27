@@ -165,9 +165,9 @@ run 999_v1_23/catboost.ipynb
 
 15. convert oof data format for 4 models as follows.
 ```
-cd 34_RNN2
-run 34_v2_02/result/converter.ipynb
-run 34_vl_01/result/converter.ipynb
+cd 34_RNN2/exp/result
+run 34_v2_02/converter.ipynb
+run 34_vl_01/converter.ipynb
 ```
 
 ```
