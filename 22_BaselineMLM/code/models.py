@@ -32,10 +32,6 @@ from transformers import (AutoConfig, AutoModel, AutoTokenizer, AdamW,
                           get_linear_schedule_with_warmup)
 
 import sys
-# sys.path.append('../../../../../COCO-LM-main/huggingface')
-# from cocolm.modeling_cocolm import COCOLMModel
-# from cocolm.configuration_cocolm import COCOLMConfig
-from sift import hook_sift_layer, AdversarialLearner
 from sklearn.metrics import log_loss
 import bitsandbytes as bnb
 
@@ -312,17 +308,6 @@ class Model(nn.Module):
                 else:
                     x_next = x_next[:,self.edge_len:self.edge_len+self.inner_len]
                 x = torch.cat([x,x_next], dim=1)
-                
-        
-#         if self.last_hidden_only:
-#             hidden_states = self.transformer(input_ids=input_ids, 
-#                                              attention_mask=attention_mask).last_hidden_state #(bs,num_tokens,hidden_size)
-#             hidden_states = self.rnn(hidden_states) 
-#         else:
-#             hidden_states = self.transformer(input_ids=input_ids, 
-#                                              attention_mask=attention_mask).hidden_states[-self.multi_layers:] # list of (bs,num_tokens,hidden_size)
-#             hidden_states = torch.cat(hidden_states, dim=2) # (bs=1,num_tokens,hidden_size*multi_layers)
-#             hidden_states = self.rnn(hidden_states) # (bs=1,num_tokens,hidden_size*multi_layers)
             
         hidden_states = self.rnn(x) 
         hidden_states = hidden_states.squeeze(0) # (num_tokens,hidden_size*multi_layers)
@@ -416,7 +401,6 @@ class Model(nn.Module):
         # get score
         pred = logits.softmax(dim=-1).detach().cpu().numpy() # (bs=num_discourse,hidden_size*multi_layers)
         label = data['label'].detach().cpu().numpy()
-        #score = self.get_scores(pred, label)
             
         return pred, label, loss#, score
     
@@ -539,16 +523,6 @@ class Model(nn.Module):
         
         return optimizer
 
-#     def fetch_scheduler(self, optimizer):
-#         scheduler = get_cosine_schedule_with_warmup(
-#             optimizer,
-#             num_warmup_steps=int(self.warmup_ratio * self.num_train_steps),
-#             num_training_steps=self.num_train_steps,
-#             num_cycles=0.5,
-#             last_epoch=-1,
-#         )
-#         return scheduler
-    
     def fetch_scheduler(self, optimizer):
         print('self.warmup_ratio = ', self.warmup_ratio)
         print('self.num_train_steps = ', self.num_train_steps)
@@ -629,7 +603,6 @@ class DatasetTrain(Dataset):
         self.mask_prob = mask_prob
         self.mask_ratio = mask_ratio
         self.aug = aug
-        #self.max_length = max_length
         self.discourse_type_token_ids_dict = {
             discourse_type : tokenizer.convert_tokens_to_ids(f'[{discourse_type.upper()}]')
             for discourse_type in discourse_type_list
@@ -688,7 +661,6 @@ class DatasetTest(Dataset):
         self.df = df
         self.unique_ids = sorted(df['essay_id'].unique())
         self.tokenizer = tokenizer
-        #self.max_length = max_length
         self.discourse_type_token_ids_dict = {
             discourse_type : tokenizer.convert_tokens_to_ids(f'[{discourse_type.upper()}]')
             for discourse_type in discourse_type_list
