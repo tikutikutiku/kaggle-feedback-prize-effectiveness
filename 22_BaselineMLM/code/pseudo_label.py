@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore")
 
+import transformers
+transformers.logging.set_verbosity_error()
+
 
 def seed_everything(seed: int):
     random.seed(seed)
@@ -26,14 +29,14 @@ def seed_everything(seed: int):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fold_path", type=str, required=True)
+    #parser.add_argument("--fold_path", type=str, required=True)
     parser.add_argument("--fold", type=int, required=True)
     parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--version", type=str, required=True)
     parser.add_argument("--seed", type=int, default=-1, required=True)
     parser.add_argument("--input_path", type=str, default='../../input/feedback-prize-effectiveness/', required=False)
     
-    parser.add_argument("--val_batch_size", type=int, default=8, required=False)
+    parser.add_argument("--test_batch_size", type=int, default=1, required=False)
     parser.add_argument("--slack_url", type=str, default='none', required=False)
     
     parser.add_argument("--pretrain_path", type=str, default='none', required=False)
@@ -52,18 +55,19 @@ def parse_args():
     
     parser.add_argument("--mt", type=str, default='false', required=False)
     
+    parser.add_argument("--window_size", type=int, default=512, required=False)
+    parser.add_argument("--inner_len", type=int, default=384, required=False)
+    parser.add_argument("--edge_len", type=int, default=64, required=False)
+    
     parser.add_argument("--unlabeled_data_path", type=str, required=False)
+    parser.add_argument("--data_name", type=str, default='none', required=False)
     
     return parser.parse_args()
 
     
 from models import Model, DatasetTest, CustomCollator
-# import sys
-# sys.path.append('../../../../../COCO-LM-main/huggingface')
-# from cocolm.tokenization_cocolm import COCOLMTokenizer
     
 if __name__=='__main__':
-#if True:
     NUM_JOBS = 12
     args = parse_args()
     if args.seed<0:
@@ -71,27 +75,13 @@ if __name__=='__main__':
     else:
         seed_everything(args.fold + args.seed)
         
-    #train_df = pd.read_csv(opj(args.input_path, 'train.csv'))
-    #test_df = pd.read_csv(opj(args.input_path, 'test.csv'))
-    #sub_df = pd.read_csv(opj(args.input_path, 'sample_submission.csv'))
-    #print('train_df.shape = ', train_df.shape)
-    #print('test_df.shape = ', test_df.shape)
-    #print('sub_df.shape = ', sub_df.shape)
-
-    #LABEL = 'discourse_effectiveness'
-    
-    #from preprocessing import generate_text
-    #train_df = generate_text(train_df)
-    #train_df = pd.read_csv(args.preprocessed_data_path)
-    #train_df['label'] = train_df[LABEL].map({'Ineffective':0, 'Adequate':1, 'Effective':2})
-
     test_df = pd.read_csv(args.unlabeled_data_path)
     print('test_df.shape = ', test_df.shape)
     
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
     from preprocessing import relation_mapper
-    if 'deberta-v2' in args.model or  'deberta-v3' in args.model:
+    if 'deberta-v2' in args.model or 'deberta-v3' in args.model:
         from transformers.models.deberta_v2 import DebertaV2TokenizerFast
         tokenizer = DebertaV2TokenizerFast.from_pretrained(args.model, trim_offsets=False)
         special_tokens_dict = {'additional_special_tokens': ['\n\n'] + [f'[{s.upper()}]' for s in list(relation_mapper.keys())]}
@@ -106,11 +96,10 @@ if __name__=='__main__':
     test_dataset = DatasetTest(
         test_df,
         tokenizer, 
-        max_length=args.max_length
     )
     test_dataloader = DataLoader(
             test_dataset,
-            batch_size=args.val_batch_size,
+            batch_size=args.test_batch_size,
             shuffle=False,
             collate_fn=CustomCollator(tokenizer),
             num_workers=4, 
@@ -119,6 +108,7 @@ if __name__=='__main__':
         )
     
     #model
+    model_pretraining = None
     model = Model(args.model, 
                   tokenizer,
                   num_labels=args.num_labels, 
@@ -130,8 +120,12 @@ if __name__=='__main__':
                   l2norm=args.l2norm,
                   max_length=args.max_length,
                   mt=args.mt,
+                  window_size=args.window_size,
+                  inner_len=args.inner_len,
+                  edge_len=args.edge_len,
+                  model_pretraining=model_pretraining,
                  )
-    weight_path = f'./result/{args.version}/model_seed{args.seed}_fold{args.fold}.pth'
+    weight_path = f'./result/{args.version}/model_seed{args.seed}_fold{args.fold}_swa.pth'
     model.load_state_dict(torch.load(weight_path))
     model = model.cuda()
     model.eval()
@@ -144,38 +138,20 @@ if __name__=='__main__':
             outputs.append(output)
             
     preds = []
-    data_ids = []
-    texts = []
-    essay_ids = []
+    discourse_ids = []
     for o in outputs:
         preds.append(o['pred'])
-        data_ids.extend(o['data_id'])
-        texts.extend(o['text'])
-        essay_ids.extend(o['essay_id'])
-    
+        discourse_ids.extend(o['discourse_ids'])
     preds = np.vstack(preds)
+    discourse_ids = np.hstack(discourse_ids)
     
     pred_df = pd.DataFrame()
-    pred_df['essay_id'] = essay_ids
-    pred_df['discourse_id'] = data_ids
+    pred_df['discourse_id'] = discourse_ids
     pred_df['Ineffective'] = preds[:,0]
     pred_df['Adequate'] = preds[:,1]
     pred_df['Effective'] = preds[:,2]
-    pred_df['discourse_effectiveness'] = preds.argmax(axis=1)
-    pred_df.to_csv(f'./result/{args.version}/pseudo_fold{args.fold}.csv', index=False)
-    
-    
-#     raw_oof = {
-#         data_id:{
-#             'pred':pred, 
-#             'text':text
-#         } for data_id,pred,text in zip(
-#             data_ids, preds, texts
-#         )
-#     }
-#     print('len(raw_oof) = ', len(raw_oof))
-#     import joblib
-#     print(f'save raw_oof_fold{args.fold}...')
-#     joblib.dump(raw_oof, f'./result/{args.version}/raw_pseudo_fold{args.fold}.joblib')
-#     print(f'save raw_oof_fold{args.fold}, done')
-#     print('\n')
+    pred_df = test_df.merge(pred_df, on='discourse_id', how='left')
+    if args.data_name=='asap':
+        pred_df.to_csv(f'./result/{args.version}/pseudo_fold{args.fold}_asap.csv', index=False)
+    else:
+        pred_df.to_csv(f'./result/{args.version}/pseudo_fold{args.fold}.csv', index=False)

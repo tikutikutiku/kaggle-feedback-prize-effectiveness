@@ -29,7 +29,7 @@ def seed_everything(seed: int):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    #parser.add_argument("--fold_path", type=str, required=True)
+    parser.add_argument("--fold_path", type=str, required=True)
     parser.add_argument("--fold", type=int, required=True)
     parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--version", type=str, required=True)
@@ -76,9 +76,6 @@ if __name__=='__main__':
         seed_everything(args.fold + args.seed)
         
     test_df = pd.read_csv(args.unlabeled_data_path)
-    #test_df['essay_id'] = test_df['essay_id'].values.astype(str)
-    #unique_ids = sorted(test_df['essay_id'].unique())
-    #test_df = test_df[test_df['essay_id'].isin(unique_ids[:10])].reset_index(drop=True)
     print('test_df.shape = ', test_df.shape)
     
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
@@ -128,7 +125,6 @@ if __name__=='__main__':
                   edge_len=args.edge_len,
                   model_pretraining=model_pretraining,
                  )
-    #weight_path = f'./result/{args.version}/model_seed{args.seed}_fold{args.fold}.pth'
     weight_path = f'./result/{args.version}/model_seed{args.seed}_fold{args.fold}_swa.pth'
     model.load_state_dict(torch.load(weight_path))
     model = model.cuda()
@@ -155,7 +151,4 @@ if __name__=='__main__':
     pred_df['Adequate'] = preds[:,1]
     pred_df['Effective'] = preds[:,2]
     pred_df = test_df.merge(pred_df, on='discourse_id', how='left')
-    if args.data_name=='asap':
-        pred_df.to_csv(f'./result/{args.version}/pseudo_fold{args.fold}_asap.csv', index=False)
-    else:
-        pred_df.to_csv(f'./result/{args.version}/pseudo_fold{args.fold}.csv', index=False)
+    pred_df.to_csv(f'./result/{args.version}/pseudo_fold{args.fold}.csv', index=False)

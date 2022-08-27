@@ -31,10 +31,6 @@ import torch.nn.functional as F
 from transformers import (AutoConfig, AutoModel, AutoTokenizer, AdamW, 
                           get_cosine_schedule_with_warmup, get_cosine_with_hard_restarts_schedule_with_warmup, 
                           get_linear_schedule_with_warmup)
-# import sys
-# sys.path.append('../../../../../COCO-LM-main/huggingface')
-# from cocolm.modeling_cocolm import COCOLMModel
-# from cocolm.configuration_cocolm import COCOLMConfig
 from sklearn.metrics import f1_score
 
 
@@ -213,55 +209,18 @@ class Model(nn.Module):
         }
         logits = self.forward_logits(**input_data)
         targets = data['mlm_label']
-        #loss = self.get_losses(logits.reshape(-1,self.num_labels), targets.reshape(-1,).long()).mean()
         mask = targets!=-100
-        #score = self.get_score(logits[mask].sigmoid().detach().cpu().numpy().argmax(-1).reshape(-1,),
-        #                       targets[mask].detach().cpu().numpy().reshape(-1,))
         loss = self.get_losses(logits[mask].reshape(-1,self.num_labels),
                                targets[mask].reshape(-1,).long()).mean()
         score = self.get_score(logits.sigmoid().argmax(-1)[mask].detach().cpu().numpy().reshape(-1,),
                                targets[mask].detach().cpu().numpy().reshape(-1,))
-        
-        #print('logits.sigmoid().argmax(-1)[mask] = ', logits.sigmoid().argmax(-1)[mask])
-        #print('targets[mask] = ', targets[mask])
         
         pred = logits.sigmoid().argmax(-1)
         bs = pred.shape[0]
         
         input_ids = data['input_ids']
         orig_input_ids = data['orig_input_ids']
-        
-        #print('\n')
-        #print('pred = ', pred)
-        #print('input_ids = ', input_ids)
-        #print('targets = ', targets)
-        
-#         rtd_label = []
-#         output_ids = []
-#         #print('self.tokenizer.mask_token_id = ', self.tokenizer.mask_token_id)
-#         for p,t,inp, orig_inp in zip(pred.reshape(-1,), targets.reshape(-1,), input_ids.reshape(-1,), orig_input_ids.reshape(-1,)):
-#             #print('orig_inp = {}, inp = {}, t = {}, p = {}'.format(orig_inp, inp, t, p))
-#             if inp==self.tokenizer.mask_token_id:
-#                 output_ids.append(p)
-#                 rtd_label.append(int(p!=t))
-#             elif inp==self.tokenizer.pad_token_id:
-#                 output_ids.append(self.tokenizer.pad_token_id)
-#                 rtd_label.append(-100)
-#             else:
-#                 output_ids.append(orig_inp)
-#                 rtd_label.append(0)
-#         rtd_label = torch.Tensor(rtd_label).reshape(bs,-1)
-#         output_ids = torch.Tensor(output_ids).reshape(bs,-1)
-        
-        #print('rtd_label.shape = ', rtd_label.shape)
-        #print('input_ids.shape = ', input_ids.shape)
-        
         output_data = data
-        #output_data['input_ids'] = output_ids.long().detach()
-        #output_data.update({
-        #    'rtd_label':rtd_label.long()
-        #})
-        
         return loss, score, output_data
     
     def validation_step(self, batch):
@@ -273,7 +232,6 @@ class Model(nn.Module):
         logits = self.forward_logits(**input_data)
         targets = data['mlm_label']
         mask = targets!=-100
-        #loss = self.get_losses(logits.reshape(-1,self.num_labels), targets.reshape(-1,).long())
         loss = self.get_losses(logits[mask].reshape(-1,self.num_labels), 
                                targets[mask].reshape(-1,).long())
         outputs = {
@@ -289,30 +247,7 @@ class Model(nn.Module):
         
         input_ids = data['input_ids']
         orig_input_ids = data['orig_input_ids']
-        
-#         rtd_label = []
-#         output_ids = []
-#         #print('self.tokenizer.mask_token_id = ', self.tokenizer.mask_token_id)
-#         for p,t,inp, orig_inp in zip(pred.reshape(-1,), targets.reshape(-1,), input_ids.reshape(-1,), orig_input_ids.reshape(-1,)):
-#             #print('orig_inp = {}, inp = {}, t = {}, p = {}'.format(orig_inp, inp, t, p))
-#             if inp==self.tokenizer.mask_token_id:
-#                 output_ids.append(p)
-#                 rtd_label.append(int(p!=t))
-#             elif inp==self.tokenizer.pad_token_id:
-#                 output_ids.append(self.tokenizer.pad_token_id)
-#                 rtd_label.append(-100)
-#             else:
-#                 output_ids.append(orig_inp)
-#                 rtd_label.append(0)
-#         rtd_label = torch.Tensor(rtd_label).reshape(bs,-1)
-#         output_ids = torch.Tensor(output_ids).reshape(bs,-1)
-        
         output_data = data
-        #output_data['input_ids'] = output_ids.long()
-        #output_data.update({
-        #    'rtd_label':rtd_label.long()
-        #})
-        
         return outputs, output_data
     
     def validation_epoch_end(self, outputs):
@@ -423,9 +358,6 @@ class DatasetTrain(Dataset):
             print('create validation dataset...')
             for essay_id in tqdm(self.unique_ids):
                 sample_df = self.df[self.df['essay_id']==essay_id].reset_index(drop=True)
-                #text = ''
-                #for discourse_type, discourse_text in zip(sample_df['discourse_type'].values, sample_df['discourse_text'].values):
-                #    text += f' [{discourse_type.upper()}] {discourse_text}'
                 text_path = opj(self.text_dir, f'{essay_id}.txt')
                 with open(text_path) as f:
                     text = f.read().rstrip()
@@ -454,9 +386,6 @@ class DatasetTrain(Dataset):
     def __getitem__(self, idx):
         essay_id = self.unique_ids[idx]
         sample_df = self.df[self.df['essay_id']==essay_id].reset_index(drop=True)
-        #text = ''
-        #for discourse_type, discourse_text in zip(sample_df['discourse_type'].values, sample_df['discourse_text'].values):
-        #    text += f' [{discourse_type.upper()}] {discourse_text}'
         text_path = opj(self.text_dir, f'{essay_id}.txt')
         with open(text_path) as f:
             text = f.read().rstrip()
@@ -492,7 +421,7 @@ class DatasetTrain(Dataset):
         orig_input_ids = [self.tokenizer.cls_token_id] + orig_input_ids + [self.tokenizer.sep_token_id]
         
         return dict(
-            data_id = essay_id, #data_id,
+            data_id = essay_id,
             text = text,
             mlm_label = torch.LongTensor(mlm_label),
             input_ids = torch.LongTensor(input_ids),

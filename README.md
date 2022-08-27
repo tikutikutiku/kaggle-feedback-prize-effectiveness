@@ -1,10 +1,10 @@
-# kaggle-feedback-prize-effectiveness, part of 2nd place solution
-This is the training code of a part of 2nd place solution for the Kaggle competition, Feedback Prize - Predicting Effective Arguments.
+# kaggle-feedback-prize-effectiveness, Tom's part of the 2nd place solution
+This is the training code of Tom's part of the 2nd place solution for the Kaggle competition, Feedback Prize - Predicting Effective Arguments.
 
 Team's solution summary : https://www.kaggle.com/competitions/feedback-prize-effectiveness/discussion/347359  
-Inference code : TBD
+Inference code for Tom's part : https://www.kaggle.com/code/tikutiku/feedback2-stacking
 
-## solution overview
+## solution overview for Tom's part
 ![part_of_solution_Tom](https://user-images.githubusercontent.com/10670302/186918739-9508425b-221f-4430-b4d2-2e7d0d0e579b.png)
 
 
@@ -22,6 +22,21 @@ nvidia drivers v.460
 
 
 ## Usage
+0. download data from Kaggle  
+this competition's data : https://www.kaggle.com/competitions/feedback-prize-effectiveness/data  
+2021 competition's data : https://www.kaggle.com/competitions/feedback-prize-2021/data  
+tascj0's pretrained weights : https://www.kaggle.com/datasets/tascj0/feedback-checkpoints  
+
+put them as follows, respectively 
+```
+input/feedback-prize-effectiveness
+input/feedback-prize-2021
+input/tascj
+```
+
+run input/tascj/converter.ipynb for deberta_large_fold0.pth, deberta_xlarge_fold0.pth
+
+
 1. data split for kaggle train data  
 ```
 cd 00_EDA/00_v2_07/
@@ -115,9 +130,10 @@ run 22_v2_01-pseudo.ipynb
 11. train with 1st round pseudo-label, then finetune on gt label of this competition
 ```
 cd 29_Pseudo4
-run 29_v2_01/ensemble_to_create_pseudo_label.ipynb, then run exp/29_v2_01.ipynb
-run 29_v2_02/ensemble_to_create_pseudo_label.ipynb, then run exp/29_v2_02.ipynb
-run 29_vl_01/ensemble_to_create_pseudo_label.ipynb, then run exp/29_vl_01.ipynb
+run code/ensemble_to_create_pseudo_label.ipynb 
+run exp/29_v2_01.ipynb
+run exp/29_v2_02.ipynb
+run exp/29_vl_01.ipynb
 ```
 
 
@@ -133,8 +149,9 @@ run 29_vl_01-pseudo.ipynb
 13. train with 2nd round pseudo-label, then finetune on gt label of this competition
 ```
 cd 34_RNN2
-run 34_v2_02/ensemble_to_create_pseudo_label.ipynb, then run exp/34_v2_02.ipynb
-run 34_vl_01/ensemble_to_create_pseudo_label.ipynb, then run exp/34_vl_01.ipynb
+run code/ensemble_to_create_pseudo_label.ipynb
+run exp/34_v2_02.ipynb
+run exp/34_vl_01.ipynb
 ```
 
 
@@ -148,9 +165,9 @@ run 999_v1_23/catboost.ipynb
 
 15. convert oof data format for 4 models as follows.
 ```
-cd 34_RNN2
-run 34_v2_02/result/converter.ipynb
-run 34_vl_01/result/converter.ipynb
+cd 34_RNN2/exp/result
+run 34_v2_02/converter.ipynb
+run 34_vl_01/converter.ipynb
 ```
 
 ```
