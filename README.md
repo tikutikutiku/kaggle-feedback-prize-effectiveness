@@ -25,11 +25,16 @@ nvidia drivers v.460
 0. download data from Kaggle  
 this competition's data : https://www.kaggle.com/competitions/feedback-prize-effectiveness/data  
 2021 competition's data : https://www.kaggle.com/competitions/feedback-prize-2021/data  
+tascj0's pretrained weights : https://www.kaggle.com/datasets/tascj0/feedback-checkpoints  
+
 put them as follows, respectively 
 ```
 input/feedback-prize-effectiveness
 input/feedback-prize-2021
+input/tascj
 ```
+
+run input/tascj/converter.ipynb for deberta_large_fold0.pth, deberta_xlarge_fold0.pth
 
 
 1. data split for kaggle train data  
