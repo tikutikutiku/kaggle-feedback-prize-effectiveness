@@ -1,10 +1,10 @@
 # kaggle-feedback-prize-effectiveness, Tom's part of the 2nd place solution
-This is the training code of a part of the 2nd place solution for the Kaggle competition, Feedback Prize - Predicting Effective Arguments.
+This is the training code of Tom's part of the 2nd place solution for the Kaggle competition, Feedback Prize - Predicting Effective Arguments.
 
 Team's solution summary : https://www.kaggle.com/competitions/feedback-prize-effectiveness/discussion/347359  
 Inference code for Tom's part : https://www.kaggle.com/code/tikutiku/feedback2-stacking
 
-## solution overview
+## solution overview for Tom's part
 ![part_of_solution_Tom](https://user-images.githubusercontent.com/10670302/186918739-9508425b-221f-4430-b4d2-2e7d0d0e579b.png)
 
 
