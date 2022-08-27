@@ -106,7 +106,6 @@ def parse_args():
     
     
 if __name__=='__main__':
-#if True:
     NUM_JOBS = 12
     args = parse_args()
     if args.seed<0:

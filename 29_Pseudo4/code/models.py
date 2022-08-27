@@ -399,7 +399,7 @@ class Model(nn.Module):
         pred = logits.softmax(dim=-1).detach().cpu().numpy() # (bs=num_discourse,hidden_size*multi_layers)
         label = data['label'].detach().cpu().numpy()
             
-        return pred, label, loss#, score
+        return pred, label, loss
     
     def validation_step(self, batch):
         data = to_gpu(batch)
@@ -566,7 +566,7 @@ class Model(nn.Module):
         return loss
     
     def get_scores(self, pred, label):
-        score = -1 * log_loss(label.reshape(-1,), pred.reshape(-1,self.num_labels))
+        score = -1 * log_loss(label.reshape(-1,), pred.reshape(-1,self.num_labels), labels=[0,1,2])
         return score
     
 import numpy as np
