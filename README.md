@@ -149,8 +149,9 @@ run 29_vl_01-pseudo.ipynb
 13. train with 2nd round pseudo-label, then finetune on gt label of this competition
 ```
 cd 34_RNN2
-run 34_v2_02/ensemble_to_create_pseudo_label.ipynb, then run exp/34_v2_02.ipynb
-run 34_vl_01/ensemble_to_create_pseudo_label.ipynb, then run exp/34_vl_01.ipynb
+run code/ensemble_to_create_pseudo_label.ipynb
+run exp/34_v2_02.ipynb
+run exp/34_vl_01.ipynb
 ```
 
 
